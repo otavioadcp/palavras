@@ -11,6 +11,7 @@ import { createGrid,
 
 import { getNewSecretWord } from './wordlist.js';
 import { checkGuess, LetterState } from './gameLogic.js';
+import { createDisplayKeyboard, updateDisplayKeyStates } from './displayKeyboard.js';
 
 // Estado do jogo
 let currentRowIndex = 0;
@@ -18,6 +19,7 @@ let selectedTileIndex = 0;
 let isGameOver = false;
 let secretWord = '';
 let isInputDisabled = false;
+let allGuessedLetterStates = {};
 
 function setupKeyboardListeners() {
     document.addEventListener('keydown', handleKeyPress);
@@ -74,6 +76,38 @@ function processSubmitAttempt() {
 }
 
 function finishSubmitAttempt(allCorrect) {
+
+        // Pega a palavra que foi adivinhada nesta tentativa
+        const guessedWord = getWordFromRow(currentRowIndex); // Assumindo que currentRowIndex ainda é da tentativa recém-concluída
+        const feedbackStatesForRow = checkGuess(guessedWord, secretWord); // Pega o feedback específico desta linha
+    
+        // Atualiza o estado global das letras (allGuessedLetterStates)
+        const GUESSED_LETTER_STATUS_PRIORITY = {
+            // Defina LetterState.EMPTY em gameLogic.js se quiser um estado inicial explícito
+            // ou trate a ausência de uma chave em allGuessedLetterStates como prioridade 0.
+            [LetterState.ABSENT]: 1,
+            [LetterState.PRESENT]: 2,
+            [LetterState.CORRECT]: 3,
+        };
+    
+        for (let i = 0; i < guessedWord.length; i++) {
+            const letter = guessedWord[i].toUpperCase();
+            const currentStatusInGuess = feedbackStatesForRow[i]; // 'correct', 'present', 'absent' do guess atual
+    
+            const existingGlobalStatus = allGuessedLetterStates[letter];
+            const priorityOfCurrentStatus = GUESSED_LETTER_STATUS_PRIORITY[currentStatusInGuess] || 0;
+            const priorityOfExistingStatus = GUESSED_LETTER_STATUS_PRIORITY[existingGlobalStatus] || 0;
+    
+            // Atualiza o estado global da letra APENAS se o novo estado for "melhor" (maior prioridade)
+            if (priorityOfCurrentStatus > priorityOfExistingStatus) {
+                allGuessedLetterStates[letter] = currentStatusInGuess;
+            }
+        }
+    
+        // Comanda o teclado de display para atualizar suas cores
+        updateDisplayKeyStates(allGuessedLetterStates);
+    
+
     if (allCorrect) {
         setTimeout(() => alert(`🎉 Parabéns! Você acertou: ${secretWord} 🎉`), 100); // Pequeno delay para o último flip
         isGameOver = true;
@@ -198,6 +232,7 @@ function handleTileClick(rowIndex, tileColIndex) {
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM completamente carregado e analisado.");
     const gameContainer = document.getElementById('game-container');
+    createDisplayKeyboard('display-keyboard-container'); // Usa o ID do container do index.html
 
     if (gameContainer) {
         secretWord = getNewSecretWord(); // Pega a primeira palavra secreta
@@ -207,4 +242,5 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.error("Mestre Construtor: Elemento 'game-container' não encontrado no DOM!");
     }
+    updateDisplayKeyStates(allGuessedLetterStates);
 });

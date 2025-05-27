@@ -25,7 +25,7 @@
     /* Cores de Feedback (Resultado da Tentativa) */
     --feedback-correct-bg: #6aaa64;
     --feedback-present-bg: #c9b458;
-    --feedback-absent-bg: var(--palette-color-2); 
+    --feedback-absent-bg: #121c2b; 
 
     /* Tiles */
     --tile-size: 68px;                   
