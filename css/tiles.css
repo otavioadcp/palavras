@@ -1,0 +1,90 @@
+
+.tile {
+    width: var(--tile-size);
+    height: var(--tile-size);
+    border: var(--tile-border-width) solid var(--tile-border-default);
+    border-radius: var(--tile-border-radius);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: var(--tile-font-size);
+    font-weight: bold;
+    text-transform: uppercase;
+    box-sizing: border-box;
+    color: var(--tile-text-color);
+    background-color: var(--tile-background-default);
+    transition: transform 0.1s ease-out,
+                background-color 0.3s ease,
+                border-color 0.3s ease,
+                color 0.3s ease;
+}
+
+.tile {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform 0.5s ease;
+    perspective: 1000px; /* Necessário para o efeito 3D do flip */
+}
+
+.tile-selected {
+    border-bottom: .4rem solid var(--tile-border-active); /* Cria um "glow" com a cor ativa */
+    
+}
+
+.tile.correct {
+    background-color: var(--feedback-correct-bg);
+    color: var(--text-color-on-dark-bg);
+    border-color: var(--feedback-correct-bg);
+}
+
+.tile.present {
+    background-color: var(--feedback-present-bg);
+    color: var(--text-color-on-dark-bg);
+    border-color: var(--feedback-present-bg);
+}
+
+.tile.absent {
+    background-color: var(--feedback-absent-bg);
+    color: var(--text-color-on-dark-bg);
+    border-color: var(--feedback-absent-bg);
+}
+
+.tile-active-input {
+    box-shadow: inset 0 -3px 0 var(--tile-border-active-underline);
+}
+
+.tile-is-flipping {
+    animation: flipTileAnimation 0.6s ease-in-out; /* Ajuste a duração e o timing function */
+    /* backface-visibility: hidden; */ /* Pode ser útil se tiver conteúdo complexo no verso */
+}
+
+.tile-pop {
+    animation: tilePopAnimation 0.2s ease-out;
+}
+
+.row-shake-error {
+    animation: shakeRow 0.5s ease-in-out; /* Ajuste a duração conforme necessário */
+}
+
+@keyframes tilePopAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+@keyframes shakeRow {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); } /* Ajuste a intensidade do shake */
+    20%, 40%, 60%, 80% { transform: translateX(6px); }
+}
+
+@keyframes flipTileAnimation {
+    0% {
+        transform: rotateX(0deg);
+    }
+    50% {
+        transform: rotateX(90deg); /* Meio do giro, quando a cor de feedback será aplicada */
+    }
+    100% {
+        transform: rotateX(0deg); /* Volta à posição original, mostrando a nova cor */
+    }
+}
+

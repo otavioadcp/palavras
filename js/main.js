@@ -24,7 +24,6 @@ function setupKeyboardListeners() {
     updateSelectedTileIndicator();
 }
 
-
 function processSubmitAttempt() {
     if (isInputDisabled) return; // Evita submissões múltiplas enquanto anima
 

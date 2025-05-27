@@ -1,0 +1,62 @@
+:root {
+    font-family: 'B612 Mono', sans-serif;
+
+    /* Sua paleta de cores de teste */
+    --palette-color-1: #0b111a;
+    --palette-color-2: #23477a; 
+    --palette-color-3: #3978d1; 
+    --palette-color-4: #8eadd8; 
+    --palette-color-5: #ecf0f6; 
+
+
+    /* Cores Gerais */
+    --page-background: var(--palette-color-1);
+    --text-color-default: var(--palette-color-5);
+    --text-color-on-dark-bg: #FFFFFF; 
+
+    /* Cores do Grid e Células (Tiles) */
+    --tile-background-default: var(--palette-color-5); /* Fundo padrão da célula */
+    --tile-border-default: var(--palette-color-2); /* Borda padrão da célula */
+    --tile-border-filled: var(--palette-color-4); /* Borda da célula preenchida, antes da avaliação */
+    --tile-border-active-underline: var(--palette-color-3); /* Cor do underline da célula ativa */
+    --tile-text-color: var(--palette-color-2);     /* Cor do texto dentro da célula */
+    --tile-border-active: var(--palette-color-2); /* Cor do underline/borda da célula ativa */
+
+    /* Cores de Feedback (Resultado da Tentativa) */
+    --feedback-correct-bg: #6aaa64;
+    --feedback-present-bg: #c9b458;
+    --feedback-absent-bg: var(--palette-color-2); 
+
+    /* Tiles */
+    --tile-size: 68px;                   
+    --tile-font-size: 2.4rem;              
+    --tile-border-radius: 8px;          
+    --tile-border-width: 2px;
+    --grid-gap: 6px;                     
+}
+
+/* Definição de outros themes
+body.theme-dark :root {
+    --page-background: #121212;
+    --text-color-default: #E0E0E0;
+    --tile-background-default: #3A3A3C;
+    --tile-border-default: #2C2C2E;
+    --tile-text-color: #FFFFFF;
+    // ... e assim por diante para as outras variáveis
+}
+*/
+
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--page-background);
+    margin: 20px;
+    color: var(--text-color-default);
+}
+
+.page-title{
+    font-size: 4rem;
+    color: var(--palette-color-5)
+}
