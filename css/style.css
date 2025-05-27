@@ -1,0 +1,158 @@
+:root {
+    /* Sua paleta de cores de teste */
+    --palette-color-1: #49243E; /* Roxo Escuro/Vinho */
+    --palette-color-2: #704264; /* Roxo Médio */
+    --palette-color-3: #BB8493; /* Malva Claro */
+    --palette-color-4: #DBAFA0; /* Bege/Nude Claro */
+
+    /* Cores Gerais */
+    --page-background: var(--palette-color-4);
+    --text-color-default: var(--palette-color-1);
+    --text-color-on-dark-bg: #FFFFFF; 
+
+    /* Cores do Grid e Células (Tiles) */
+    --tile-background-default: #FFFFFF; /* Fundo padrão da célula */
+    --tile-border-default: var(--palette-color-3); /* Borda padrão da célula */
+    --tile-border-filled: var(--palette-color-2); /* Borda da célula preenchida, antes da avaliação */
+    --tile-border-active-underline: var(--palette-color-1); /* Cor do underline da célula ativa */
+    --tile-text-color: var(--palette-color-1);     /* Cor do texto dentro da célula */
+    --tile-border-active: var(--palette-color-1); /* Cor do underline/borda da célula ativa */
+
+    /* Cores de Feedback (Resultado da Tentativa) */
+    --feedback-correct-bg: #6aaa64;
+    --feedback-present-bg: #c9b458;
+    --feedback-absent-bg: var(--palette-color-1); 
+
+    /* Tiles */
+    --tile-size: 68px;                   
+    --tile-font-size: 2.4rem;              
+    --tile-border-radius: 8px;          
+    --tile-border-width: 2px;
+    --grid-gap: 6px;                     
+}
+
+/* Definição de outros themes
+body.theme-dark :root {
+    --page-background: #121212;
+    --text-color-default: #E0E0E0;
+    --tile-background-default: #3A3A3C;
+    --tile-border-default: #2C2C2E;
+    --tile-text-color: #FFFFFF;
+    // ... e assim por diante para as outras variáveis
+}
+*/
+
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--page-background);
+    margin: 20px;
+    color: var(--text-color-default);
+}
+
+#game-board {
+    display: grid;
+    grid-template-rows: repeat(6, 1fr); /* Número de linhas */
+    gap: var(--grid-gap);
+    padding: 10px; /* Ajuste conforme necessário */
+    box-sizing: border-box;
+    margin-top: 20px; /* Espaço do título */
+}
+
+.attempt-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--grid-gap);
+}
+
+.tile {
+    width: var(--tile-size);
+    height: var(--tile-size);
+    border: var(--tile-border-width) solid var(--tile-border-default);
+    border-radius: var(--tile-border-radius);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: var(--tile-font-size);
+    font-weight: bold;
+    text-transform: uppercase;
+    box-sizing: border-box;
+    color: var(--tile-text-color);
+    background-color: var(--tile-background-default);
+    transition: transform 0.1s ease-out,
+                background-color 0.3s ease,
+                border-color 0.3s ease,
+                color 0.3s ease;
+}
+
+.tile {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform 0.5s ease;
+    perspective: 1000px; /* Necessário para o efeito 3D do flip */
+}
+
+.tile-selected {
+    border-bottom: .4rem solid var(--tile-border-active); /* Cria um "glow" com a cor ativa */
+    
+}
+
+.tile.correct {
+    background-color: var(--feedback-correct-bg);
+    color: var(--text-color-on-dark-bg);
+    border-color: var(--feedback-correct-bg);
+}
+
+.tile.present {
+    background-color: var(--feedback-present-bg);
+    color: var(--text-color-on-dark-bg);
+    border-color: var(--feedback-present-bg);
+}
+
+.tile.absent {
+    background-color: var(--feedback-absent-bg);
+    color: var(--text-color-on-dark-bg);
+    border-color: var(--feedback-absent-bg);
+}
+
+.tile-active-input {
+    box-shadow: inset 0 -3px 0 var(--tile-border-active-underline);
+}
+
+@keyframes tilePopAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+.tile-pop {
+    animation: tilePopAnimation 0.2s ease-out;
+}
+
+@keyframes shakeRow {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); } /* Ajuste a intensidade do shake */
+    20%, 40%, 60%, 80% { transform: translateX(6px); }
+}
+
+.row-shake-error {
+    animation: shakeRow 0.5s ease-in-out; /* Ajuste a duração conforme necessário */
+}
+
+@keyframes flipTileAnimation {
+    0% {
+        transform: rotateX(0deg);
+    }
+    50% {
+        transform: rotateX(90deg); /* Meio do giro, quando a cor de feedback será aplicada */
+    }
+    100% {
+        transform: rotateX(0deg); /* Volta à posição original, mostrando a nova cor */
+    }
+}
+
+.tile-is-flipping {
+    animation: flipTileAnimation 0.6s ease-in-out; /* Ajuste a duração e o timing function */
+    /* backface-visibility: hidden; */ /* Pode ser útil se tiver conteúdo complexo no verso */
+}
