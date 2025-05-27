@@ -58,5 +58,6 @@ body {
 
 .page-title{
     font-size: 4rem;
-    color: var(--palette-color-5)
+    color: var(--palette-color-5);
+    margin-bottom: .5rem;
 }

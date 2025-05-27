@@ -1,4 +1,4 @@
-// js/gameLogic.js
+import { normalizeWord } from './normalizeHelper.js'; // Importe a função
 
 // Define os possíveis estados de uma letra na tentativa.
 export const LetterState = {
@@ -9,41 +9,50 @@ export const LetterState = {
 };
 
 /**
- * Compara a palavra tentada com a palavra secreta.
- * Retorna um array de estados para cada letra da tentativa.
- * @param {string} guessedWord A palavra tentada pelo jogador.
- * @param {string} secretWord A palavra secreta.
- * @returns {Array<LetterState>} Um array com os estados de cada letra.
+ * Compara a palavra tentada (o que está nos tiles) com a palavra secreta.
+ * Retorna os estados das letras e as letras que devem ser exibidas (com acentos corretos).
+ * @param {string} guessedWordOnTiles A palavra como está nos tiles (pode não ter acentos).
+ * @param {string} secretWordOriginal A palavra secreta original (com acentos).
+ * @returns {{states: Array<LetterState>, displayLetters: Array<string>}}
  */
-export function checkGuess(guessedWord, secretWord) {
-    const guess = guessedWord.toUpperCase().split('');
-    const secret = secretWord.toUpperCase().split('');
-    const result = new Array(secret.length).fill(null); // Inicializa com null para marcar processamento
+export function checkGuess(guessedWordOnTiles, secretWordOriginal) {
+    const normalizedGuessed = normalizeWord(guessedWordOnTiles);
+    const normalizedSecret = normalizeWord(secretWordOriginal);
 
-    const secretLetterCounts = {};
-    for (const letter of secret) {
-        secretLetterCounts[letter] = (secretLetterCounts[letter] || 0) + 1;
-    }
+    const originalGuessChars = guessedWordOnTiles.toUpperCase().split(''); // Letras como digitadas/exibidas
+    const originalSecretChars = secretWordOriginal.toUpperCase().split(''); // Letras da palavra secreta com acento
+
+    const states = new Array(secretWordOriginal.length).fill(LetterState.ABSENT);
+    // Começa com as letras que o usuário digitou; serão corrigidas se o estado for CORRECT
+    const displayLetters = [...originalGuessChars]; 
+
+    const tempSecretLetterCounts = {}; // Para lidar com letras repetidas na palavra secreta (contagem sobre a forma normalizada)
+    normalizedSecret.split('').forEach(letter => {
+        tempSecretLetterCounts[letter] = (tempSecretLetterCounts[letter] || 0) + 1;
+    });
 
     // 1ª Passada: Marcar letras CORRETAS (verdes)
-    for (let i = 0; i < guess.length; i++) {
-        if (guess[i] === secret[i]) {
-            result[i] = LetterState.CORRECT;
-            secretLetterCounts[guess[i]]--;
+    for (let i = 0; i < normalizedGuessed.length; i++) {
+        if (normalizedGuessed[i] === normalizedSecret[i]) {
+            states[i] = LetterState.CORRECT;
+            displayLetters[i] = originalSecretChars[i]; // Mostra a letra correta da palavra secreta (com acento)
+            tempSecretLetterCounts[normalizedSecret[i]]--;
         }
     }
 
-    // 2ª Passada: Marcar letras PRESENTES (amarelas) e AUSENTES (cinzas)
-    for (let i = 0; i < guess.length; i++) {
-        if (result[i] === LetterState.CORRECT) {
-            continue; // Já processada como correta
+    // 2ª Passada: Marcar letras PRESENTES (amarelas)
+    for (let i = 0; i < normalizedGuessed.length; i++) {
+        if (states[i] === LetterState.CORRECT) {
+            continue; // Já marcada como correta
         }
-        if (secret.includes(guess[i]) && secretLetterCounts[guess[i]] > 0) {
-            result[i] = LetterState.PRESENT;
-            secretLetterCounts[guess[i]]--;
-        } else {
-            result[i] = LetterState.ABSENT;
+        // A letra normalizada existe na palavra secreta normalizada E ainda há instâncias dela disponíveis
+        if (normalizedSecret.includes(normalizedGuessed[i]) && tempSecretLetterCounts[normalizedGuessed[i]] > 0) {
+            states[i] = LetterState.PRESENT;
+            // Para 'PRESENT', mantemos a letra que o usuário digitou (originalGuessChars[i]) em displayLetters.
+            // Se quiséssemos mostrar a versão acentuada da palavra secreta aqui também, seria uma decisão de design.
+            // O "Termo" geralmente mostra a letra digitada pelo usuário para 'presente'.
+            tempSecretLetterCounts[normalizedGuessed[i]]--;
         }
     }
-    return result;
+    return { states, displayLetters };
 }

@@ -1,4 +1,5 @@
 import { LetterState } from './gameLogic.js';
+import { normalizeWord } from './normalizeHelper.js'; // Importe a função
 
 // Layout do teclado (Padrão QWERTY adaptado incluindo Ç)
 const KEY_LAYOUT = [
@@ -52,15 +53,14 @@ export function createDisplayKeyboard(containerId) {
  * Atualiza o estado visual das teclas no teclado de display.
  * @param {Object} letterStates Objeto com o estado de cada letra (ex: {'A': 'correct', 'B': 'absent'})
  */
-export function updateDisplayKeyStates(letterStates) {
-    for (const letter in displayKeyElements) {
-        const keyElement = displayKeyElements[letter];
-        const state = letterStates[letter]; // ex: 'correct', 'present', 'absent'
+export function updateDisplayKeyStates(letterStates) { // letterStates usa chaves normalizadas (ex: 'C' para 'Ç')
+    for (const originalKeyText in displayKeyElements) { // originalKeyText é 'Q', 'W', ..., 'Ç' do layout
+        const keyElement = displayKeyElements[originalKeyText];
+        const normalizedKeyText = normalizeWord(originalKeyText); // Converte 'Ç' para 'C', 'A' para 'A', etc.
+        const state = letterStates[normalizedKeyText];
 
-        // Limpa classes de estado anteriores
         keyElement.classList.remove('key-correct', 'key-present', 'key-absent');
 
-        // Adiciona a nova classe de estado, se houver
         if (state) {
             switch (state) {
                 case LetterState.CORRECT:

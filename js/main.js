@@ -9,9 +9,10 @@ import { createGrid,
     getRowElement 
 } from './grid.js';
 
-import { getNewSecretWord } from './wordlist.js';
+import { initializeWordList, getNewSecretWord, isValidWord } from './wordlist.js';
 import { checkGuess, LetterState } from './gameLogic.js';
 import { createDisplayKeyboard, updateDisplayKeyStates } from './displayKeyboard.js';
+import { normalizeWord } from './normalizeHelper.js';
 
 // Estado do jogo
 let currentRowIndex = 0;
@@ -26,90 +27,86 @@ function setupKeyboardListeners() {
     updateSelectedTileIndicator();
 }
 
+
 function processSubmitAttempt() {
-    if (isInputDisabled) return; // Evita submissões múltiplas enquanto anima
+    if (isInputDisabled) return;
+    isInputDisabled = true;
 
-    isInputDisabled = true; // Bloqueia novo input durante as animações
-    const guessedWord = getWordFromRow(currentRowIndex);
-    console.log(`Mestre Construtor: Verificando "${guessedWord}" contra "${secretWord}"`);
-    const feedbackStates = checkGuess(guessedWord, secretWord);
+    const guessedWordOnTiles = getWordFromRow(currentRowIndex); // Palavra como foi digitada nos tiles (ex: "FURIA")
 
-    let allCorrect = true;
-    let tilesAnimated = 0; // Contador para saber quando todas as animações terminaram
+    // `secretWord` é a palavra original com acentos
+    const feedbackResult = checkGuess(guessedWordOnTiles, secretWord); 
+
+    const isThisGuessWinning = feedbackResult.states.every(s => s === LetterState.CORRECT);
+    let tilesAnimated = 0;
 
     for (let i = 0; i < WORD_LENGTH; i++) {
         const tile = getTileElement(currentRowIndex, i);
-        const state = feedbackStates[i];
+        const stateForThisTile = feedbackResult.states[i];
+        const letterToDisplayOnTile = feedbackResult.displayLetters[i];
 
         if (tile) {
-            // Aplica a animação de flip com um atraso escalonado para cada tile
             setTimeout(() => {
                 tile.classList.add('tile-is-flipping');
-
-                // A cor do feedback (estado) é aplicada no meio da animação de flip
-                // A duração da animação é 0.6s, então o meio é em 0.3s (300ms)
                 setTimeout(() => {
-                    setTileState(currentRowIndex, i, state);
-                }, 300); // Metade da duração da animação de flip
+                    setTileLetter(currentRowIndex, i, letterToDisplayOnTile);
+                    setTileState(currentRowIndex, i, stateForThisTile);
+                }, 300); // Metade da animação de flip
 
                 tile.addEventListener('animationend', () => {
                     tile.classList.remove('tile-is-flipping');
                     tilesAnimated++;
-                    // Quando todas as animações da linha terminarem, finaliza a lógica da tentativa
                     if (tilesAnimated === WORD_LENGTH) {
-                        finishSubmitAttempt(allCorrect);
+                        // Passa se a tentativa foi vencedora, os estados da linha,
+                        // e a palavra como estava nos tiles ANTES da correção visual (para o teclado)
+                        finishSubmitAttempt(isThisGuessWinning, feedbackResult.states, guessedWordOnTiles);
                     }
                 }, { once: true });
-            }, i * 250); // Atraso para iniciar o flip de cada tile (ex: 250ms de diferença)
+            }, i * 250);
         } else {
-            // Caso um tile não seja encontrado, decrementamos o contador para não bloquear o fluxo
             tilesAnimated++;
-             if (tilesAnimated === WORD_LENGTH) {
-                finishSubmitAttempt(allCorrect);
+            if (tilesAnimated === WORD_LENGTH) {
+                finishSubmitAttempt(isThisGuessWinning, feedbackResult.states, guessedWordOnTiles);
             }
-        }
-
-        if (state !== LetterState.CORRECT) {
-            allCorrect = false;
         }
     }
 }
 
-function finishSubmitAttempt(allCorrect) {
+function finishSubmitAttempt(isThisGuessWinning, currentAttemptFeedbackStates, wordSubmittedFromTiles) {
+    // `currentAttemptFeedbackStates` é o array com os estados ('correct', 'present', 'absent') da tentativa.
+    // `wordSubmittedFromTiles` é a palavra como estava nos tiles (ex: "FURIA").
 
-        // Pega a palavra que foi adivinhada nesta tentativa
-        const guessedWord = getWordFromRow(currentRowIndex); // Assumindo que currentRowIndex ainda é da tentativa recém-concluída
-        const feedbackStatesForRow = checkGuess(guessedWord, secretWord); // Pega o feedback específico desta linha
-    
-        // Atualiza o estado global das letras (allGuessedLetterStates)
-        const GUESSED_LETTER_STATUS_PRIORITY = {
-            // Defina LetterState.EMPTY em gameLogic.js se quiser um estado inicial explícito
-            // ou trate a ausência de uma chave em allGuessedLetterStates como prioridade 0.
-            [LetterState.ABSENT]: 1,
-            [LetterState.PRESENT]: 2,
-            [LetterState.CORRECT]: 3,
-        };
-    
-        for (let i = 0; i < guessedWord.length; i++) {
-            const letter = guessedWord[i].toUpperCase();
-            const currentStatusInGuess = feedbackStatesForRow[i]; // 'correct', 'present', 'absent' do guess atual
-    
-            const existingGlobalStatus = allGuessedLetterStates[letter];
-            const priorityOfCurrentStatus = GUESSED_LETTER_STATUS_PRIORITY[currentStatusInGuess] || 0;
-            const priorityOfExistingStatus = GUESSED_LETTER_STATUS_PRIORITY[existingGlobalStatus] || 0;
-    
-            // Atualiza o estado global da letra APENAS se o novo estado for "melhor" (maior prioridade)
-            if (priorityOfCurrentStatus > priorityOfExistingStatus) {
-                allGuessedLetterStates[letter] = currentStatusInGuess;
-            }
+    // Atualiza o estado global das letras para o teclado de display
+    const GUESSED_LETTER_STATUS_PRIORITY = {
+        [LetterState.ABSENT]: 1, 
+        [LetterState.PRESENT]: 2, 
+        [LetterState.CORRECT]: 3,
+    };
+
+    // Para o teclado, usamos a forma normalizada da letra que foi efetivamente testada
+    const normalizedWordSubmitted = normalizeWord(wordSubmittedFromTiles);
+
+    for (let i = 0; i < WORD_LENGTH; i++) {
+        const normalizedLetter = normalizedWordSubmitted[i]; // Letra normalizada da tentativa
+        const statusForThisLetter = currentAttemptFeedbackStates[i]; // Estado desta letra na tentativa
+
+        const existingGlobalStatus = allGuessedLetterStates[normalizedLetter];
+        
+        // Se não existe, prioridade 0
+        const priorityOfExistingStatus = GUESSED_LETTER_STATUS_PRIORITY[existingGlobalStatus] || 0; 
+        
+        const priorityOfCurrentStatus = GUESSED_LETTER_STATUS_PRIORITY[statusForThisLetter] || 0;
+
+        if (priorityOfCurrentStatus > priorityOfExistingStatus) {
+            allGuessedLetterStates[normalizedLetter] = statusForThisLetter;
         }
-    
-        // Comanda o teclado de display para atualizar suas cores
-        updateDisplayKeyStates(allGuessedLetterStates);
-    
+    }
+    updateDisplayKeyStates(allGuessedLetterStates); // Comanda a atualização visual do teclado
 
-    if (allCorrect) {
-        setTimeout(() => alert(`🎉 Parabéns! Você acertou: ${secretWord} 🎉`), 100); // Pequeno delay para o último flip
+    // Lógica de vitória, derrota e avanço de linha
+    if (isThisGuessWinning) {
+        console.log("Mestre Construtor: PARABÉNS! Você desvendou a palavra secreta!");
+        setTimeout(() => alert(`🎉 Parabéns! Você acertou: ${secretWord} 🎉`), 100);
         isGameOver = true;
     } else {
         currentRowIndex++;
@@ -122,7 +119,7 @@ function finishSubmitAttempt(allCorrect) {
         }
     }
 
-    updateSelectedTileIndicator(); // Atualiza o indicador para a nova linha ou limpa se o jogo acabou
+    updateSelectedTileIndicator(); // Atualiza o indicador de tile selecionado para a nova linha ou limpa
     isInputDisabled = false; // Reabilita o input do teclado
 }
 
@@ -202,16 +199,33 @@ function handleKeyPress(event) {
             }
             updateSelectedTileIndicator(); // Atualiza o indicador visual da seleção
         }
-    } else if (key === 'Enter') {
-        if (isGameOver) return;
-        const currentWord = getWordFromRow(currentRowIndex);
-        if (currentWord.length === WORD_LENGTH) { // Verifica se todas as 5 letras estão preenchidas
-            processSubmitAttempt();
+    } else if (key === 'Enter') { // Ou if (key.toUpperCase() === 'ENTER') para o teclado virtual
+        if (isGameOver || isInputDisabled) return;
+
+        const guessedWord = getWordFromRow(currentRowIndex); // Pega a palavra da linha
+        
+        if (guessedWord.length === WORD_LENGTH) {
+            // NOVA VERIFICAÇÃO: Checa se a palavra é válida ANTES de processar
+            if (isValidWord(guessedWord)) {
+                processSubmitAttempt(); // Procede com a submissão (flips, etc.)
+            } else {
+                // Palavra inválida! Informa o usuário e não submete.
+                console.log(`Mestre Construtor: Palavra "${guessedWord}" não reconhecida no dicionário!`);
+                // Acionar o efeito de "tremer" na linha (shakeRow)
+                const currentRowElement = getRowElement(currentRowIndex);
+                if (currentRowElement) {
+                    currentRowElement.classList.add('row-shake-error');
+                    currentRowElement.addEventListener('animationend', () => {
+                        currentRowElement.classList.remove('row-shake-error');
+                    }, { once: true });
+                }
+                // Poderia também exibir uma mensagem mais proeminente na UI.
+            }
         } else {
+            console.log("Mestre Construtor: Complete todas as letras antes de submeter!");
             const currentRowElement = getRowElement(currentRowIndex);
             if (currentRowElement) {
                 currentRowElement.classList.add('row-shake-error');
-                // Remove a classe após a animação para permitir que seja reativada
                 currentRowElement.addEventListener('animationend', () => {
                     currentRowElement.classList.remove('row-shake-error');
                 }, { once: true });
@@ -229,18 +243,38 @@ function handleTileClick(rowIndex, tileColIndex) {
     updateSelectedTileIndicator();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM completamente carregado e analisado.");
     const gameContainer = document.getElementById('game-container');
+
+    //Carrega a lista de palavras antes de qlq outra coisa
+    const wordListLoadedSuccessfully = await initializeWordList();
+
+    if (!wordListLoadedSuccessfully) {
+        // Se a lista de palavras não pôde ser carregada, exibe uma mensagem e impede o jogo
+        if (gameContainer) {
+            gameContainer.innerHTML = '<p style="color: red; text-align: center;">Erro crítico: Não foi possível carregar a lista de palavras. O jogo não pode iniciar.</p>';
+        }
+        return; // Interrompe a inicialização do jogo
+    }
+
     createDisplayKeyboard('display-keyboard-container'); // Usa o ID do container do index.html
 
     if (gameContainer) {
         secretWord = getNewSecretWord(); // Pega a primeira palavra secreta
+        if (secretWord === "ERRO" || !secretWord) { // Checa se a palavra secreta foi obtida
+             if (gameContainer) {
+                gameContainer.innerHTML = '<p style="color: red; text-align: center;">Erro crítico: Não foi possível definir uma palavra secreta. O jogo não pode iniciar.</p>';
+            }
+            return;
+        }
+
         createGrid(gameContainer, handleTileClick);
         setupKeyboardListeners();
-        updateSelectedTileIndicator(); // Chamada inicial
+        updateSelectedTileIndicator();
+        createDisplayKeyboard('display-keyboard-container');
+        updateDisplayKeyStates(allGuessedLetterStates); // Atualiza o teclado (estará vazio inicialmente)
     } else {
         console.error("Mestre Construtor: Elemento 'game-container' não encontrado no DOM!");
     }
-    updateDisplayKeyStates(allGuessedLetterStates);
 });
